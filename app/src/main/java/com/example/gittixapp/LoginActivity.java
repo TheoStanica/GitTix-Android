@@ -65,10 +65,8 @@ public class LoginActivity extends AppCompatActivity {
 
 
     public void login(View view) {
-        // make http request to login using credentials
-        // if ok response, move to mainActivity
-        // else Toast incorrect credentials
-        String url = "http://10.0.2.2/api/users/signin";
+
+        // create JSON object to send
         JSONObject loginCredentials = new JSONObject();
         try {
             loginCredentials.put("email", email.getText());
@@ -77,41 +75,8 @@ public class LoginActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
-
-        OkHttpClient client = new OkHttpClient();
-        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-        RequestBody body = RequestBody.create(JSON, loginCredentials.toString());
-        Request request = new Request.Builder()
-                .url(url)
-                .post(body)
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                e.printStackTrace();
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if(response.code() == 200){
-                    // Credentials are ok,get cookie in response, save it as  session, move to mainActivity
-
-                    String sessionCookie = response.headers("Set-Cookie").get(0).toString();
-
-                    SessionManagement sessionManagement = new SessionManagement(getApplicationContext());
-                    sessionManagement.saveSession(sessionCookie);
-                    moveToMainActivity();
-
-                } else {
-                    // Incorrect credentials, show Toast with error
-                    String responseString = response.body().string();
-
-                    ErrorParser errorParser = new ErrorParser(LoginActivity.this, getApplicationContext(), responseString);
-                    errorParser.displayErrors();
-                }
-            }
-        });
+        // make http request to login using credentials
+        RequestController.Login(loginCredentials, getApplicationContext(), LoginActivity.this);
 
     }
 

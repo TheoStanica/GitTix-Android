@@ -1,5 +1,6 @@
 package com.example.gittixapp;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -31,10 +32,19 @@ public class RegisterActivity  extends AppCompatActivity {
         email = findViewById(R.id.txt_email);
         password = findViewById(R.id.txt_password);
         username = findViewById(R.id.txt_username);
+
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+    }
+    @Override
+    public boolean onSupportNavigateUp() {
+        Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK| Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        return true;
     }
 
     public void register(View view) {
-        String url = "http://10.0.2.2/api/users/signup";
+        // Create JSON object to send
         JSONObject loginCredentials = new JSONObject();
         try {
             loginCredentials.put("email", email.getText());
@@ -44,41 +54,8 @@ public class RegisterActivity  extends AppCompatActivity {
             e.printStackTrace();
         }
 
-
-        OkHttpClient client = new OkHttpClient();
-        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-        RequestBody body = RequestBody.create(JSON, loginCredentials.toString());
-        Request request = new Request.Builder()
-                .url(url)
-                .post(body)
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                e.printStackTrace();
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                System.out.println(response.body().string());
-                if(response.code() == 201){
-                    // Credentials are ok,get cookie in response, save it as  session, move to mainActivity
-
-                    String sessionCookie = response.headers("Set-Cookie").get(0);
-                    SessionManagement sessionManagement = new SessionManagement(getApplicationContext());
-                    sessionManagement.saveSession(sessionCookie);
-                    moveToMainActivity();
-
-                } else {
-                    // Incorrect credentials, show Toast with error
-                    String responseString = response.body().string();
-
-                    ErrorParser errorParser = new ErrorParser(RegisterActivity.this, getApplicationContext(), responseString);
-                    errorParser.displayErrors();
-                }
-            }
-        });
+        // Make the request
+        RequestController.Register(loginCredentials,getApplicationContext(),RegisterActivity.this);
     }
 
     private void moveToMainActivity() {
