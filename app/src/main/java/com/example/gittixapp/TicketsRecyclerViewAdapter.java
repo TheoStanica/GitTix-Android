@@ -13,13 +13,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class TicketsRecyclerViewAdapter extends RecyclerView.Adapter<TicketsRecyclerViewAdapter.ViewHolder> {
     private List<JSONObject> mData;
     private LayoutInflater mInflater;
-    private ItemClickListener mClickListener;
     private Context mContext;
 
 
@@ -53,7 +51,7 @@ public class TicketsRecyclerViewAdapter extends RecyclerView.Adapter<TicketsRecy
                 public void onClick(View v) {
                     // move to TicketView Activity
                     Intent intent = new Intent(mContext, TicketViewActivity.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK| Intent.FLAG_ACTIVITY_NEW_TASK);
+                    intent.setFlags( Intent.FLAG_ACTIVITY_NEW_TASK);
                     intent.putExtra("ticket_id", tag);
                     mContext.startActivity(intent);
                 }
@@ -74,41 +72,20 @@ public class TicketsRecyclerViewAdapter extends RecyclerView.Adapter<TicketsRecy
 
 
     // stores and recycles views as they are scrolled off screen
-    public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
+    public class ViewHolder extends RecyclerView.ViewHolder  {
         TextView myTextView;
         TextView myPrice;
         Button btnView;
 
         ViewHolder(View itemView) {
             super(itemView);
-            myTextView = itemView.findViewById(R.id.txtTitle);
-            myPrice = itemView.findViewById(R.id.txtPrice);
+            myTextView = itemView.findViewById(R.id.myTextView);
+            myPrice = itemView.findViewById(R.id.myPrice);
             btnView = itemView.findViewById(R.id.btnView);
-
-
-
-            itemView.setOnClickListener(this);
         }
 
-        @Override
-        public void onClick(View view) {
-            if (mClickListener != null) mClickListener.onItemClick(view, getAdapterPosition());
-        }
+
     }
 
-    // convenience method for getting data at click position
-    JSONObject getItem(int id) {
-        return mData.get(id);
-    }
-
-    // allows clicks events to be caught
-    void setClickListener(ItemClickListener itemClickListener) {
-        this.mClickListener = itemClickListener;
-    }
-
-    // parent activity will implement this method to respond to click events
-    public interface ItemClickListener {
-        void onItemClick(View view, int position);
-    }
 
 }

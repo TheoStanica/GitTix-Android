@@ -35,6 +35,8 @@ public class RegisterActivity  extends AppCompatActivity {
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
+
+    // navbar back button set to send user back to login screen
     @Override
     public boolean onSupportNavigateUp() {
         Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
@@ -56,12 +58,6 @@ public class RegisterActivity  extends AppCompatActivity {
 
         // Make the request
         RequestController.Register(loginCredentials,getApplicationContext(),RegisterActivity.this);
-    }
-
-    private void moveToMainActivity() {
-        Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK| Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
     }
 
 }

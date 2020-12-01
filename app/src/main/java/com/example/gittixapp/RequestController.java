@@ -5,11 +5,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
+import androidx.appcompat.view.menu.ActionMenuItem;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.gms.maps.GoogleMap;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -50,7 +52,6 @@ public abstract class RequestController {
 
                 if(response.code() == 201){
                     // Credentials are ok,get cookie in response, save it as  session, move to mainActivity
-
                     String sessionCookie = response.headers("Set-Cookie").get(0);
                     SessionManagement sessionManagement = new SessionManagement(context);
                     sessionManagement.saveSession(sessionCookie);
@@ -59,8 +60,6 @@ public abstract class RequestController {
                     Intent intent = new Intent(activity, MainActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK| Intent.FLAG_ACTIVITY_NEW_TASK);
                     context.startActivity(intent);
-
-
                 } else {
                     // Incorrect credentials, show Toast with error
                     String responseString = response.body().string();
@@ -105,7 +104,7 @@ public abstract class RequestController {
 
                 } else {
                     // Incorrect credentials, show Toast with error
-                    System.out.println(response.body().toString());
+
                     String responseString = response.body().string();
 
                     ErrorParser errorParser = new ErrorParser(activity, context, responseString);
@@ -116,8 +115,6 @@ public abstract class RequestController {
     }
 
     public static void handleTicketsRecyclerView(Context context, Activity activity, ArrayList<JSONObject> TicketsList){
-
-
         String url = "http://10.0.2.2/api/tickets";
 
         OkHttpClient client = new OkHttpClient();
@@ -140,26 +137,141 @@ public abstract class RequestController {
                 // add them to the Ticket RecyclerView
                 String result =  response.body().string();
 
-                ArrayList<JSONObject> TicketsList = new ArrayList<>();
-                try {
-                    JSONArray resultJSON = new JSONArray(result);
-                    for(int i =0; i < resultJSON.length(); i++){
-                        System.out.println(resultJSON.getJSONObject(i).get("title"));
-                        TicketsList.add(resultJSON.getJSONObject(i));
-                    }
-                    Thread thread =new Thread(){
-                        public void run() {
-                            activity.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    setupRecyClerView(activity,context, TicketsList);;
-                                }
-                            });
+                if(response.code() == 200){
+                    ArrayList<JSONObject> TicketsList = new ArrayList<>();
+                    try {
+                        JSONArray resultJSON = new JSONArray(result);
+                        for(int i =0; i < resultJSON.length(); i++){
+                            TicketsList.add(resultJSON.getJSONObject(i));
                         }
-                    };
-                    thread.start();
-                } catch (JSONException e) {
-                    e.printStackTrace();
+                        Thread thread =new Thread(){
+                            public void run() {
+                                activity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        setupRecyClerView(activity,context, TicketsList);;
+                                    }
+                                });
+                            }
+                        };
+                        thread.start();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    ErrorParser errorParser = new ErrorParser(activity, context, result);
+                    errorParser.displayErrors();
+                }
+            }
+        });
+    }
+    public static void handleOrdersRecyclerView(Context context, Activity activity, ArrayList<JSONObject> ordersList){
+        String url = "http://10.0.2.2/api/orders/";
+
+        SessionManagement sessionManagement = new SessionManagement(context);
+        String cookie = sessionManagement.getSession();
+
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder()
+                .addHeader("Cookie", cookie)
+                .url(url)
+                .get()
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+            }
+
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                // get the list of orders
+                // add them to the Orders RecyclerView
+                String result =  response.body().string();
+                if(response.code() == 200){
+                    ArrayList<JSONObject> ordersList = new ArrayList<>();
+                    try {
+                        JSONArray resultJSON = new JSONArray(result);
+                        for(int i =0; i < resultJSON.length(); i++){
+                            ordersList.add(resultJSON.getJSONObject(i));
+                        }
+                        Thread thread =new Thread(){
+                            public void run() {
+                                activity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        RecyclerView recyclerView = activity.findViewById(R.id.rvOrders);
+                                        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+                                        OrdersRecycleViewAdapter adapter = new OrdersRecycleViewAdapter(context, ordersList);
+                                        recyclerView.setAdapter(adapter);
+                                    }
+                                });
+                            }
+                        };
+                        thread.start();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    ErrorParser errorParser = new ErrorParser(activity, context, result);
+                    errorParser.displayErrors();
+                }
+            }
+        });
+    }
+
+    public static void updateTicketsRecyclerView(Context context, Activity activity, ArrayList<JSONObject> TicketsList, String searchText){
+        String url = "http://10.0.2.2/api/tickets/search/" + searchText;
+        if (searchText.equals("")){
+            url = "http://10.0.2.2/api/tickets/";
+        }
+        OkHttpClient client = new OkHttpClient();
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        Request request = new Request.Builder()
+                .url(url)
+                .get()
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+            }
+
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                // get the list of tickets
+                // add them to the Ticket RecyclerView
+                String result =  response.body().string();
+
+                if(response.code() == 200){
+                    ArrayList<JSONObject> TicketsList = new ArrayList<>();
+                    try {
+                        JSONArray resultJSON = new JSONArray(result);
+                        for(int i =0; i < resultJSON.length(); i++){
+
+                            TicketsList.add(resultJSON.getJSONObject(i));
+                        }
+                        Thread thread =new Thread(){
+                            public void run() {
+                                activity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        setupRecyClerView(activity,context, TicketsList);;
+                                    }
+                                });
+                            }
+                        };
+                        thread.start();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    ErrorParser errorParser = new ErrorParser(activity, context, result);
+                    errorParser.displayErrors();
                 }
             }
         });
@@ -169,16 +281,13 @@ public abstract class RequestController {
         RecyclerView recyclerView = activity.findViewById(R.id.rvTickets);
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
         TicketsRecyclerViewAdapter adapter = new TicketsRecyclerViewAdapter(context, TicketsList);
-//                adapter.setClickListener();
         recyclerView.setAdapter(adapter);
     }
 
     public  static void updateUsernameValue(Context context, Activity activity, TextView username){
         String url = "http://10.0.2.2/api/users/currentuser";
-
         SessionManagement sessionManagement = new SessionManagement(context);
         String cookie = sessionManagement.getSession();
-
         OkHttpClient client = new OkHttpClient();
         MediaType JSON = MediaType.parse("application/json; charset=utf-8");
         Request request = new Request.Builder()
@@ -221,5 +330,221 @@ public abstract class RequestController {
         });
     }
 
+
+
+    //Loads TicketViewActivity data
+    public static String loadTicketViewPage(Activity activity, Context context, String ticketId,
+                                            TextView ticketTitle, TextView ticketPrice, GoogleMap gMap) throws IOException {
+
+        String url = "http://10.0.2.2/api/tickets/" + ticketId;
+
+        SessionManagement sessionManagement = new SessionManagement(context);
+        String cookie = sessionManagement.getSession();
+        OkHttpClient client = new OkHttpClient();
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        Request request = new Request.Builder()
+                .addHeader("Cookie", cookie)
+                .url(url)
+                .get()
+                .build();
+        final String[] result = new String[1];
+
+        Thread thread =new Thread() {
+            public void run() {
+                try (Response response = client.newCall(request).execute()) {
+                    result[0] = response.body().string();
+                    if(response.code() != 200){
+                        //if wrong ticketID/ something goes bad
+                        // show errors in Toast message
+                        ErrorParser errorParser = new ErrorParser(activity, context, result[0]);
+                        errorParser.displayErrors();
+
+                        // move back to mainActivity
+                        Intent intent = new Intent(activity, MainActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK| Intent.FLAG_ACTIVITY_NEW_TASK);
+                        context.startActivity(intent);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        thread.start();
+        try {
+            thread.join();
+        }
+        catch (Exception e) {
+            System.out.println(e);
+        }
+
+        return result[0];
+
+    }
+
+
+    public static void postTicket(JSONObject ticketInfo, Context context, Activity activity){
+        String url = "http://10.0.2.2/api/tickets";
+
+        SessionManagement sessionManagement = new SessionManagement(context);
+        String cookie = sessionManagement.getSession();
+
+        OkHttpClient client = new OkHttpClient();
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        RequestBody body = RequestBody.create(JSON, ticketInfo.toString());
+        Request request = new Request.Builder()
+                .addHeader("Cookie", cookie)
+                .url(url)
+                .post(body)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+
+                if(response.code() == 201){
+                    // Credentials are ok,get cookie in response, save it as  session, move to mainActivity
+                    Intent intent = new Intent(activity, MainActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK| Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(intent);
+
+                } else {
+                    String responseString = response.body().string();
+                    // Incorrect credentials, show Toast with error
+                    ErrorParser errorParser = new ErrorParser(activity, context, responseString);
+                    errorParser.displayErrors();
+                }
+            }
+        });
+    }
+
+    public static String postOrder(String bodytoSend, Context context, Activity activity){
+        String url = "http://10.0.2.2/api/orders";
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        RequestBody data = RequestBody.create(JSON, bodytoSend.toString());
+        SessionManagement sessionManagement = new SessionManagement(context);
+        String cookie = sessionManagement.getSession();
+
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder()
+                .addHeader("Cookie", cookie)
+                .url(url)
+                .post(data)
+                .build();
+
+        // run the request on new thread and wait for result
+        final String[] postOrderresult = new String[1];
+        Thread thread = new Thread(){
+            public void run(){
+                try (Response response = client.newCall(request).execute()){
+                    postOrderresult[0] =response.body().string();
+                    if(response.code() != 201){
+                        ErrorParser errorParser = new ErrorParser(activity, context, postOrderresult[0]);
+                        errorParser.displayErrors();
+                        //TODO other errors. An Error activity that will redirect user to home page
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        thread.start();
+        try {
+            thread.join();
+        }
+        catch (Exception e) {
+            System.out.println(e);
+        }
+
+        return postOrderresult[0];
+    }
+
+
+    public static String registerPaymentDetails(String bodytoSend, Context context, Activity activity){
+
+        String url = "http://10.0.2.2/api/payments/registerpayment";
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        RequestBody data = RequestBody.create(JSON, bodytoSend);
+        SessionManagement sessionManagement = new SessionManagement(context);
+        String cookie = sessionManagement.getSession();
+
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder()
+                .addHeader("Cookie", cookie)
+                .url(url)
+                .post(data)
+                .build();
+
+
+        // run the request on new thread and wait for result
+
+        final String[] token = new String[1];
+        Thread thread = new Thread(){
+            public void run(){
+                try (Response response = client.newCall(request).execute()){
+                    token[0] =response.body().string();
+
+                    if(response.code() != 201){
+                        ErrorParser errorParser = new ErrorParser(activity, context, token[0]);
+                        errorParser.displayErrors();
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        thread.start();
+        try {
+            thread.join();
+        }
+        catch (Exception e) {
+            System.out.println(e);
+        }
+
+        return token[0];
+    }
+
+    public static String getOrderDetails(String orderId, Context context, Activity activity){
+        String url = "http://10.0.2.2/api/orders/"+ orderId;
+
+        SessionManagement sessionManagement = new SessionManagement(context);
+        String cookie = sessionManagement.getSession();
+
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder()
+                .addHeader("Cookie", cookie)
+                .url(url)
+                .get()
+                .build();
+
+        final String[] orderDetails = new String[1];
+        Thread thread = new Thread(){
+            public void run(){
+                try (Response response = client.newCall(request).execute()){
+                    orderDetails[0] =response.body().string();
+                    if(response.code() != 200){
+                        ErrorParser errorParser = new ErrorParser(activity, context, orderDetails[0]);
+                        errorParser.displayErrors();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        thread.start();
+        try {
+            thread.join();
+        }
+        catch (Exception e) {
+            System.out.println(e);
+        }
+        return orderDetails[0];
+    }
 
 }

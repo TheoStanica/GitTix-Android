@@ -35,6 +35,7 @@ import okhttp3.Response;
 
 public class LoginActivity extends AppCompatActivity {
     EditText email, password;
+    LoadingDialog loadingDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,14 +49,13 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-
         checkSession();
     }
 
     private void checkSession() {
+        // get the session cookie stored in shared preferences
         SessionManagement sessionManagement = new SessionManagement(LoginActivity.this);
         String session = sessionManagement.getSession();
-
         if(!session.equals("none")){
             //user is logged in > move to mainActivity
             moveToMainActivity();
@@ -63,9 +63,8 @@ public class LoginActivity extends AppCompatActivity {
     }
 
 
-
+    // this will be called when login button is pressed
     public void login(View view) {
-
         // create JSON object to send
         JSONObject loginCredentials = new JSONObject();
         try {
@@ -74,16 +73,13 @@ public class LoginActivity extends AppCompatActivity {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-
         // make http request to login using credentials
         RequestController.Login(loginCredentials, getApplicationContext(), LoginActivity.this);
-
     }
 
     private void moveToMainActivity() {
         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK| Intent.FLAG_ACTIVITY_NEW_TASK);
-
         startActivity(intent);
     }
 
